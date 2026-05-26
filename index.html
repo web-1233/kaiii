@@ -1,0 +1,1313 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAI Indonesia - Pemesanan Tiket Kereta Api</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        kai: { 50:'#E8F0FE', 100:'#C5D9F7', 200:'#8DB3EF', 300:'#558DE7', 400:'#1E6EDF', 500:'#0052CC', 600:'#0044AD', 700:'#00368E', 800:'#0B1D3A', 900:'#071428' },
+                        wa: '#25D366'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root { --kai: #0052CC; --kai-dark: #0B1D3A; --kai-light: #E8F0FE; }
+        * { scrollbar-width: thin; scrollbar-color: var(--kai) #e5e7eb; }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        /* Hero background */
+        .hero-bg {
+            background: linear-gradient(160deg, #071428 0%, #0B1D3A 30%, #00368E 70%, #0052CC 100%);
+            position: relative; overflow: hidden;
+        }
+        .hero-bg::before {
+            content: ''; position: absolute; top: -40%; right: -20%; width: 80%; height: 180%;
+            background: radial-gradient(ellipse, rgba(0,82,204,0.15) 0%, transparent 70%);
+            animation: heroFloat 18s ease-in-out infinite;
+        }
+        .hero-bg::after {
+            content: ''; position: absolute; bottom: -30%; left: -10%; width: 60%; height: 140%;
+            background: radial-gradient(ellipse, rgba(30,110,223,0.1) 0%, transparent 70%);
+            animation: heroFloat 22s ease-in-out infinite reverse;
+        }
+        @keyframes heroFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(30px, -20px) rotate(3deg); }
+        }
+
+        /* Grid pattern overlay */
+        .hero-grid {
+            position: absolute; inset: 0; opacity: 0.03;
+            background-image: linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        /* Custom dropdown */
+        .station-dropdown { position: relative; }
+        .dropdown-trigger {
+            width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 12px;
+            background: white; cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; transition: all 0.2s; min-height: 48px;
+        }
+        .dropdown-trigger:hover { border-color: #93b4f0; }
+        .dropdown-trigger.active { border-color: var(--kai); box-shadow: 0 0 0 3px rgba(0,82,204,0.12); }
+        .dropdown-trigger .label { color: #1a1a2e; font-weight: 500; }
+        .dropdown-trigger .placeholder { color: #9ca3af; }
+        .dropdown-trigger i { color: #9ca3af; transition: transform 0.2s; font-size: 12px; }
+        .dropdown-trigger.active i { transform: rotate(180deg); }
+
+        .dropdown-menu {
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 50;
+            background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            border: 1px solid #e5e7eb; max-height: 320px; display: flex; flex-direction: column;
+            opacity: 0; transform: translateY(-8px); pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .dropdown-menu.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .dropdown-search { padding: 12px; border-bottom: 1px solid #f3f4f6; }
+        .dropdown-search input {
+            width: 100%; padding: 10px 12px 10px 36px; border: 2px solid #e5e7eb; border-radius: 8px;
+            font-size: 14px; outline: none; transition: border-color 0.2s; font-family: inherit;
+        }
+        .dropdown-search input:focus { border-color: var(--kai); }
+        .dropdown-search { position: relative; }
+        .dropdown-search i { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 14px; }
+
+        .dropdown-list { overflow-y: auto; flex: 1; padding: 6px; }
+        .dropdown-item {
+            padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s;
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .dropdown-item:hover { background: var(--kai-light); }
+        .dropdown-item .st-name { font-weight: 600; color: #1a1a2e; font-size: 14px; }
+        .dropdown-item .st-detail { font-size: 12px; color: #6b7280; }
+        .dropdown-item.selected { background: var(--kai-light); }
+        .dropdown-empty { padding: 24px; text-align: center; color: #9ca3af; font-size: 14px; }
+
+        /* Spinner */
+        .spinner {
+            width: 44px; height: 44px; border: 4px solid #e5e7eb;
+            border-top-color: var(--kai); border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Toast */
+        .toast-container { position: fixed; top: 80px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+            padding: 14px 20px; border-radius: 12px; color: white; font-size: 14px; font-weight: 500;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15); transform: translateX(120%);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); max-width: 360px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.error { background: #dc2626; }
+        .toast.success { background: #16a34a; }
+        .toast.info { background: var(--kai); }
+
+        /* Fade in animation */
+        .fade-up {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+        /* Train card hover */
+        .train-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .train-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,82,204,0.12); }
+
+        /* Popular train card */
+        .pop-card { transition: transform 0.25s, box-shadow 0.25s; }
+        .pop-card:hover { transform: translateY(-6px); box-shadow: 0 16px 48px rgba(0,82,204,0.1); }
+
+        /* Nav link underline */
+        .nav-link { position: relative; }
+        .nav-link::after {
+            content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px;
+            background: white; transition: width 0.25s; border-radius: 2px;
+        }
+        .nav-link:hover::after, .nav-link.active::after { width: 100%; }
+
+        /* Mobile menu */
+        .mobile-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .mobile-overlay.open { opacity: 1; pointer-events: auto; }
+        .mobile-menu {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 280px; background: var(--kai-dark);
+            z-index: 95; transform: translateX(100%); transition: transform 0.3s ease;
+            padding: 24px;
+        }
+        .mobile-menu.open { transform: translateX(0); }
+
+        /* Button press effect */
+        .btn-press:active { transform: scale(0.97); }
+
+        /* Schedule table */
+        .schedule-table { border-collapse: separate; border-spacing: 0; }
+        .schedule-table thead th { background: var(--kai-dark); color: white; font-weight: 600; }
+        .schedule-table tbody tr { transition: background 0.15s; }
+        .schedule-table tbody tr:hover { background: var(--kai-light); }
+        .schedule-table td, .schedule-table th { padding: 14px 16px; }
+
+        /* Floating WA */
+        .wa-float {
+            position: fixed; bottom: 24px; right: 24px; z-index: 80;
+            width: 60px; height: 60px; border-radius: 50%; background: #25D366;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 24px rgba(37,211,102,0.4); transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer; text-decoration: none;
+        }
+        .wa-float:hover { transform: scale(1.1); box-shadow: 0 8px 32px rgba(37,211,102,0.5); }
+        .wa-float::before {
+            content: ''; position: absolute; inset: -6px; border-radius: 50%;
+            background: rgba(37,211,102,0.2); animation: waPulse 2s infinite;
+        }
+        @keyframes waPulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .dropdown-menu { max-height: 260px; }
+            .wa-float { bottom: 16px; right: 16px; width: 52px; height: 52px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] hidden items-center justify-center">
+        <div class="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <div class="spinner"></div>
+            <p class="font-semibold text-kai-800">Memproses pemesanan...</p>
+            <p class="text-sm text-gray-500">Mohon tunggu sebentar</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Navbar -->
+    <nav class="fixed top-0 left-0 right-0 z-[100] bg-kai-900/95 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="#beranda" class="flex items-center gap-2.5 group" onclick="scrollToSection('beranda')">
+                    <div class="w-9 h-9 bg-white rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <i class="fas fa-train text-kai-500 text-base"></i>
+                    </div>
+                    <div class="leading-tight">
+                        <span class="font-black text-white text-lg tracking-tight">KAI</span>
+                        <span class="text-kai-200 text-[10px] block font-medium -mt-0.5 tracking-wider uppercase">Indonesia</span>
+                    </div>
+                </a>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#beranda" onclick="scrollToSection('beranda')" class="nav-link text-white/80 hover:text-white text-sm font-medium transition-colors active">Beranda</a>
+                    <a href="#pesan" onclick="scrollToSection('pesan')" class="nav-link text-white/80 hover:text-white text-sm font-medium transition-colors">Pesan Tiket</a>
+                    <a href="#jadwal" onclick="scrollToSection('jadwal')" class="nav-link text-white/80 hover:text-white text-sm font-medium transition-colors">Jadwal</a>
+                    <a href="#kontak" onclick="scrollToSection('kontak')" class="nav-link text-white/80 hover:text-white text-sm font-medium transition-colors">Kontak</a>
+                </div>
+
+                <!-- Hamburger -->
+                <button onclick="toggleMobileMenu()" class="md:hidden w-10 h-10 flex items-center justify-center text-white" aria-label="Menu navigasi">
+                    <i class="fas fa-bars text-lg" id="menuIcon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                    <i class="fas fa-train text-kai-500 text-sm"></i>
+                </div>
+                <span class="font-black text-white">KAI</span>
+            </div>
+            <button onclick="toggleMobileMenu()" class="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex flex-col gap-1">
+            <a href="#beranda" onclick="scrollToSection('beranda');toggleMobileMenu()" class="px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all font-medium">
+                <i class="fas fa-home w-6 text-kai-300"></i> Beranda
+            </a>
+            <a href="#pesan" onclick="scrollToSection('pesan');toggleMobileMenu()" class="px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all font-medium">
+                <i class="fas fa-ticket w-6 text-kai-300"></i> Pesan Tiket
+            </a>
+            <a href="#jadwal" onclick="scrollToSection('jadwal');toggleMobileMenu()" class="px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all font-medium">
+                <i class="fas fa-clock w-6 text-kai-300"></i> Jadwal
+            </a>
+            <a href="#kontak" onclick="scrollToSection('kontak');toggleMobileMenu()" class="px-4 py-3 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-all font-medium">
+                <i class="fas fa-phone w-6 text-kai-300"></i> Kontak
+            </a>
+        </div>
+    </div>
+
+    <!-- Hero + Booking -->
+    <section id="beranda" class="hero-bg pt-16">
+        <div class="hero-grid"></div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-32 md:pt-24 md:pb-40">
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 mb-6">
+                    <i class="fas fa-shield-halved text-kai-300 text-xs"></i>
+                    <span class="text-white/80 text-xs font-medium">Pemesanan Tiket Resmi Kereta Api Indonesia</span>
+                </div>
+                <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight">
+                    Perjalanan <span class="text-transparent bg-clip-text bg-gradient-to-r from-kai-200 to-blue-300">Nyaman</span><br class="hidden sm:block"> Seluruh Indonesia
+                </h1>
+                <p class="text-white/60 text-base sm:text-lg max-w-xl mx-auto font-light">
+                    Pesan tiket kereta api dengan mudah, cepat, dan aman untuk semua rute di Indonesia
+                </p>
+            </div>
+
+            <!-- Booking Card -->
+            <div id="pesan" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl shadow-black/10 p-5 sm:p-8">
+                <!-- Step 1: Form Pencarian -->
+                <div id="step1">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-kai-50 flex items-center justify-center">
+                            <i class="fas fa-magnifying-glass text-kai-500"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-kai-900 text-lg">Cari Tiket Kereta Api</h2>
+                            <p class="text-gray-500 text-xs">Isi data perjalanan Anda</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <!-- Stasiun Asal -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-location-dot text-kai-500 mr-1"></i> Stasiun Keberangkatan
+                            </label>
+                            <div class="station-dropdown" id="dd-departure">
+                                <div class="dropdown-trigger" onclick="toggleDropdown('departure')">
+                                    <span class="placeholder" id="dd-departure-text">Pilih stasiun keberangkatan</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="dropdown-menu" id="dd-departure-menu">
+                                    <div class="dropdown-search">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" placeholder="Ketik nama stasiun atau kota..." oninput="filterStations('departure', this.value)" onfocus="this.select()">
+                                    </div>
+                                    <div class="dropdown-list" id="dd-departure-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stasiun Tujuan -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-flag-checkered text-kai-500 mr-1"></i> Stasiun Tujuan
+                            </label>
+                            <div class="station-dropdown" id="dd-arrival">
+                                <div class="dropdown-trigger" onclick="toggleDropdown('arrival')">
+                                    <span class="placeholder" id="dd-arrival-text">Pilih stasiun tujuan</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="dropdown-menu" id="dd-arrival-menu">
+                                    <div class="dropdown-search">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" placeholder="Ketik nama stasiun atau kota..." oninput="filterStations('arrival', this.value)" onfocus="this.select()">
+                                    </div>
+                                    <div class="dropdown-list" id="dd-arrival-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <!-- Tanggal -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-calendar-days text-kai-500 mr-1"></i> Tanggal Berangkat
+                            </label>
+                            <input type="date" id="inputDate" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-kai-500 focus:ring-0 outline-none transition-colors font-medium">
+                        </div>
+
+                        <!-- Penumpang -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-users text-kai-500 mr-1"></i> Jumlah Penumpang
+                            </label>
+                            <select id="inputPassengers" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-kai-500 focus:ring-0 outline-none transition-colors font-medium appearance-none bg-white cursor-pointer">
+                                <option value="1">1 Penumpang</option>
+                                <option value="2">2 Penumpang</option>
+                                <option value="3">3 Penumpang</option>
+                                <option value="4">4 Penumpang</option>
+                                <option value="5">5 Penumpang</option>
+                                <option value="6">6 Penumpang</option>
+                            </select>
+                        </div>
+
+                        <!-- Kelas -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-star text-kai-500 mr-1"></i> Kelas Kereta
+                            </label>
+                            <select id="inputClass" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-kai-500 focus:ring-0 outline-none transition-colors font-medium appearance-none bg-white cursor-pointer">
+                                <option value="">-- Pilih Kelas --</option>
+                                <option value="Ekonomi">Ekonomi</option>
+                                <option value="Bisnis">Bisnis</option>
+                                <option value="Eksekutif">Eksekutif</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="searchTickets()" class="btn-press w-full py-3.5 bg-gradient-to-r from-kai-600 to-kai-500 hover:from-kai-700 hover:to-kai-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-kai-500/25 flex items-center justify-center gap-2 text-sm">
+                        <i class="fas fa-magnifying-glass"></i> Cari Tiket
+                    </button>
+                </div>
+
+                <!-- Step 2: Hasil Pencarian -->
+                <div id="step2" class="hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-kai-50 flex items-center justify-center">
+                                <i class="fas fa-list text-kai-500"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-kai-900 text-lg">Tiket Tersedia</h2>
+                                <p class="text-gray-500 text-xs" id="routeSummary"></p>
+                            </div>
+                        </div>
+                        <button onclick="goToStep(1)" class="btn-press text-sm text-kai-500 hover:text-kai-700 font-semibold flex items-center gap-1.5">
+                            <i class="fas fa-arrow-left text-xs"></i> Ubah
+                        </button>
+                    </div>
+                    <div id="searchResults" class="space-y-3 max-h-[400px] overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Step 3: Data Diri -->
+                <div id="step3" class="hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-kai-50 flex items-center justify-center">
+                                <i class="fas fa-user-pen text-kai-500"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-kai-900 text-lg">Data Pemesan</h2>
+                                <p class="text-gray-500 text-xs">Lengkapi data diri Anda</p>
+                            </div>
+                        </div>
+                        <button onclick="goToStep(2)" class="btn-press text-sm text-kai-500 hover:text-kai-700 font-semibold flex items-center gap-1.5">
+                            <i class="fas fa-arrow-left text-xs"></i> Kembali
+                        </button>
+                    </div>
+
+                    <!-- Ringkasan tiket -->
+                    <div class="bg-kai-50 rounded-xl p-4 mb-5 border border-kai-100">
+                        <p class="text-xs font-bold text-kai-700 mb-2 uppercase tracking-wider">Ringkasan Tiket</p>
+                        <div id="ticketSummary" class="grid grid-cols-2 gap-2 text-sm"></div>
+                    </div>
+
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-user text-kai-500 mr-1"></i> Nama Lengkap
+                            </label>
+                            <input type="text" id="inputName" placeholder="Masukkan nama lengkap sesuai KTP" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-kai-500 focus:ring-0 outline-none transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fab fa-whatsapp text-green-500 mr-1"></i> Nomor WhatsApp
+                            </label>
+                            <input type="tel" id="inputWA" placeholder="Contoh: 082261886836" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-kai-500 focus:ring-0 outline-none transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">
+                                <i class="fas fa-envelope text-kai-500 mr-1"></i> Email
+                            </label>
+                            <input type="email" id="inputEmail" placeholder="Contoh: agentiketkai@gmail.com" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm focus:border-kai-500 focus:ring-0 outline-none transition-colors">
+                        </div>
+                    </div>
+
+                    <button onclick="submitBooking()" class="btn-press w-full py-3.5 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-green-500/25 flex items-center justify-center gap-2 text-sm">
+                        <i class="fab fa-whatsapp text-lg"></i> Pesan Sekarang via WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wave divider -->
+        <div class="relative -mt-px">
+            <svg viewBox="0 0 1440 60" fill="none" class="w-full block">
+                <path d="M0 60L60 50C120 40 240 20 360 15C480 10 600 20 720 25C840 30 960 30 1080 25C1200 20 1320 10 1380 5L1440 0V60H0Z" fill="#F9FAFB"/>
+            </svg>
+        </div>
+    </section>
+
+    <!-- Kereta Populer -->
+    <section class="py-16 md:py-24 bg-gray-50" id="populer">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="inline-block text-kai-500 text-xs font-bold uppercase tracking-widest mb-3">Rekomendasi</span>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-black text-kai-900 mb-3">Kereta Api Populer</h2>
+                <p class="text-gray-500 max-w-lg mx-auto text-sm">Rute-rute terfavorit yang sering dipilih penumpang di seluruh Indonesia</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="popularGrid"></div>
+        </div>
+    </section>
+
+    <!-- Jadwal Kereta -->
+    <section class="py-16 md:py-24 bg-white" id="jadwal">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="inline-block text-kai-500 text-xs font-bold uppercase tracking-widest mb-3">Informasi</span>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-black text-kai-900 mb-3">Jadwal Kereta Api</h2>
+                <p class="text-gray-500 max-w-lg mx-auto text-sm">Jadwal keberangkatan kereta api pada rute-rute utama</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-lg shadow-black/5 border border-gray-100 overflow-hidden fade-up">
+                <div class="overflow-x-auto">
+                    <table class="schedule-table w-full text-sm text-left">
+                        <thead>
+                            <tr>
+                                <th class="text-xs uppercase tracking-wider">No</th>
+                                <th class="text-xs uppercase tracking-wider">Nama Kereta</th>
+                                <th class="text-xs uppercase tracking-wider">Rute</th>
+                                <th class="text-xs uppercase tracking-wider">Berangkat</th>
+                                <th class="text-xs uppercase tracking-wider">Tiba</th>
+                                <th class="text-xs uppercase tracking-wider">Kelas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleBody" class="text-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Kontak -->
+    <section class="py-16 md:py-24 bg-kai-900 relative overflow-hidden" id="kontak">
+        <div class="absolute inset-0 opacity-5">
+            <div class="hero-grid" style="opacity:1"></div>
+        </div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="inline-block text-kai-300 text-xs font-bold uppercase tracking-widest mb-3">Hubungi Kami</span>
+                <h2 class="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3">Pusat Kontak KAI</h2>
+                <p class="text-white/50 max-w-lg mx-auto text-sm">Layanan pelanggan 24 jam untuk membantu perjalanan Anda</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 fade-up">
+                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 transition-colors">
+                    <div class="w-14 h-14 rounded-2xl bg-kai-500/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-phone text-kai-300 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">Telepon</h3>
+                    <p class="text-white/60 text-sm">021-121</p>
+                    <p class="text-white/40 text-xs mt-1">24 Jam</p>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 transition-colors">
+                    <div class="w-14 h-14 rounded-2xl bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fab fa-whatsapp text-green-400 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">WhatsApp</h3>
+                    <p class="text-white/60 text-sm">0822-6188-6836</p>
+                    <p class="text-white/40 text-xs mt-1">Respon Cepat</p>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 transition-colors">
+                    <div class="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-envelope text-blue-300 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">Email</h3>
+                    <p class="text-white/60 text-sm">agentiketkai@gmail.com</p>
+                    <p class="text-white/40 text-xs mt-1">Balas 1x24 Jam</p>
+                </div>
+                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 transition-colors">
+                    <div class="w-14 h-14 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-globe text-purple-300 text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-white mb-1">Website</h3>
+                    <p class="text-white/60 text-sm">kai.id</p>
+                    <p class="text-white/40 text-xs mt-1">Info Lengkap</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-kai-900 border-t border-white/5 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-train text-kai-300 text-sm"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-white text-sm">KAI Indonesia</span>
+                        <span class="text-white/30 text-xs block -mt-0.5">PT Kereta Api Indonesia</span>
+                    </div>
+                </div>
+                <p class="text-white/30 text-xs text-center">&copy; 2025 KAI Indonesia. Sistem pemesanan tiket kereta api resmi.</p>
+                <div class="flex items-center gap-3">
+                    <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all" aria-label="Twitter"><i class="fab fa-x-twitter"></i></a>
+                    <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                    <a href="#" class="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Floating WhatsApp -->
+    <a href="https://wa.me/6282261886836" target="_blank" rel="noopener" class="wa-float" aria-label="Hubungi via WhatsApp">
+        <i class="fab fa-whatsapp text-white text-2xl relative z-10"></i>
+    </a>
+
+<script>
+// ============================================================
+// DATA STASIUN - Seluruh stasiun KAI di Indonesia
+// ============================================================
+const stations = [
+    // DKI Jakarta
+    {code:'GMR',name:'Gambir',city:'Jakarta',province:'DKI Jakarta'},
+    {code:'JAKK',name:'Jakarta Kota',city:'Jakarta',province:'DKI Jakarta'},
+    {code:'PSE',name:'Pasar Senen',city:'Jakarta',province:'DKI Jakarta'},
+    {code:'TJPR',name:'Tanjung Priok',city:'Jakarta',province:'DKI Jakarta'},
+    {code:'MRI',name:'Manggarai',city:'Jakarta',province:'DKI Jakarta'},
+    {code:'DU',name:'Duri',city:'Jakarta',province:'DKI Jakarta'},
+    {code:'KRT',name:'Karet',city:'Jakarta',province:'DKI Jakarta'},
+    // Jawa Barat
+    {code:'BKS',name:'Bekasi',city:'Bekasi',province:'Jawa Barat'},
+    {code:'CKR',name:'Cikarang',city:'Bekasi',province:'Jawa Barat'},
+    {code:'KW',name:'Karawang',city:'Karawang',province:'Jawa Barat'},
+    {code:'CKP',name:'Cikampek',city:'Karawang',province:'Jawa Barat'},
+    {code:'BOO',name:'Bogor',city:'Bogor',province:'Jawa Barat'},
+    {code:'SKM',name:'Sukabumi',city:'Sukabumi',province:'Jawa Barat'},
+    {code:'BD',name:'Bandung',city:'Bandung',province:'Jawa Barat'},
+    {code:'CNP',name:'Cirebon Prujakan',city:'Cirebon',province:'Jawa Barat'},
+    {code:'CN',name:'Cirebon Kejaksan',city:'Cirebon',province:'Jawa Barat'},
+    {code:'TSM',name:'Tasikmalaya',city:'Tasikmalaya',province:'Jawa Barat'},
+    {code:'CI',name:'Ciamis',city:'Ciamis',province:'Jawa Barat'},
+    {code:'BND',name:'Banjar',city:'Banjar',province:'Jawa Barat'},
+    {code:'KJT',name:'Kertajati',city:'Majalengka',province:'Jawa Barat'},
+    {code:'HGL',name:'Haurgeulis',city:'Indramayu',province:'Jawa Barat'},
+    {code:'JTB',name:'Jatibarang',city:'Indramayu',province:'Jawa Barat'},
+    {code:'PDL',name:'Padalarang',city:'Bandung Barat',province:'Jawa Barat'},
+    // Jawa Tengah
+    {code:'TGL',name:'Tegal',city:'Tegal',province:'Jawa Tengah'},
+    {code:'PML',name:'Pemalang',city:'Pemalang',province:'Jawa Tengah'},
+    {code:'PKL',name:'Pekalongan',city:'Pekalongan',province:'Jawa Tengah'},
+    {code:'BTG',name:'Batang',city:'Batang',province:'Jawa Tengah'},
+    {code:'WLR',name:'Weleri',city:'Kendal',province:'Jawa Tengah'},
+    {code:'SMT',name:'Semarang Tawang',city:'Semarang',province:'Jawa Tengah'},
+    {code:'SMC',name:'Semarang Poncol',city:'Semarang',province:'Jawa Tengah'},
+    {code:'KND',name:'Kendal',city:'Kendal',province:'Jawa Tengah'},
+    {code:'PWT',name:'Purwokerto',city:'Purwokerto',province:'Jawa Tengah'},
+    {code:'KTA',name:'Kutoarjo',city:'Kebumen',province:'Jawa Tengah'},
+    {code:'KM',name:'Kebumen',city:'Kebumen',province:'Jawa Tengah'},
+    {code:'GB',name:'Gombong',city:'Kebumen',province:'Jawa Tengah'},
+    {code:'SLO',name:'Solo Balapan',city:'Surakarta',province:'Jawa Tengah'},
+    {code:'SK',name:'Solo Jebres',city:'Surakarta',province:'Jawa Tengah'},
+    {code:'KT',name:'Klaten',city:'Klaten',province:'Jawa Tengah'},
+    {code:'SG',name:'Sragen',city:'Sragen',province:'Jawa Tengah'},
+    {code:'DL',name:'Delanggu',city:'Klaten',province:'Jawa Tengah'},
+    {code:'BBG',name:'Brumbung',city:'Semarang',province:'Jawa Tengah'},
+    {code:'GD',name:'Gundih',city:'Grobogan',province:'Jawa Tengah'},
+    {code:'CPU',name:'Cepu',city:'Blora',province:'Jawa Tengah'},
+    {code:'BJ',name:'Bojonegoro',city:'Bojonegoro',province:'Jawa Tengah'},
+    {code:'BLA',name:'Blora',city:'Blora',province:'Jawa Tengah'},
+    {code:'RBL',name:'Randublatung',city:'Blora',province:'Jawa Tengah'},
+    // DI Yogyakarta
+    {code:'YK',name:'Yogyakarta',city:'Yogyakarta',province:'DI Yogyakarta'},
+    {code:'LPN',name:'Lempuyangan',city:'Yogyakarta',province:'DI Yogyakarta'},
+    {code:'MGW',name:'Maguwo',city:'Sleman',province:'DI Yogyakarta'},
+    {code:'PTK',name:'Patukan',city:'Bantul',province:'DI Yogyakarta'},
+    {code:'STL',name:'Sentolo',city:'Kulonprogo',province:'DI Yogyakarta'},
+    {code:'WT',name:'Wates',city:'Kulonprogo',province:'DI Yogyakarta'},
+    // Jawa Timur
+    {code:'SGU',name:'Surabaya Gubeng',city:'Surabaya',province:'Jawa Timur'},
+    {code:'SBI',name:'Surabaya Pasar Turi',city:'Surabaya',province:'Jawa Timur'},
+    {code:'ML',name:'Malang',city:'Malang',province:'Jawa Timur'},
+    {code:'KPN',name:'Kepanjen',city:'Malang',province:'Jawa Timur'},
+    {code:'BL',name:'Blitar',city:'Blitar',province:'Jawa Timur'},
+    {code:'KD',name:'Kediri',city:'Kediri',province:'Jawa Timur'},
+    {code:'TA',name:'Tulungagung',city:'Tulungagung',province:'Jawa Timur'},
+    {code:'NJ',name:'Nganjuk',city:'Nganjuk',province:'Jawa Timur'},
+    {code:'MN',name:'Madiun',city:'Madiun',province:'Jawa Timur'},
+    {code:'CRB',name:'Caruban',city:'Madiun',province:'Jawa Timur'},
+    {code:'JG',name:'Jombang',city:'Jombang',province:'Jawa Timur'},
+    {code:'MR',name:'Mojokerto',city:'Mojokerto',province:'Jawa Timur'},
+    {code:'LBG',name:'Lamongan',city:'Lamongan',province:'Jawa Timur'},
+    {code:'BBT',name:'Babat',city:'Lamongan',province:'Jawa Timur'},
+    {code:'TB',name:'Tuban',city:'Tuban',province:'Jawa Timur'},
+    {code:'PB',name:'Probolinggo',city:'Probolinggo',province:'Jawa Timur'},
+    {code:'JBR',name:'Jember',city:'Jember',province:'Jawa Timur'},
+    {code:'RBP',name:'Rambipuji',city:'Jember',province:'Jawa Timur'},
+    {code:'BW',name:'Banyuwangi Baru',city:'Banyuwangi',province:'Jawa Timur'},
+    {code:'SBW',name:'Situbondo',city:'Situbondo',province:'Jawa Timur'},
+    {code:'PS',name:'Pasuruan',city:'Pasuruan',province:'Jawa Timur'},
+    {code:'GRT',name:'Grati',city:'Pasuruan',province:'Jawa Timur'},
+    {code:'BGL',name:'Bangil',city:'Pasuruan',province:'Jawa Timur'},
+    {code:'SDA',name:'Sidoarjo',city:'Sidoarjo',province:'Jawa Timur'},
+    // Sumatera Utara
+    {code:'MES',name:'Medan',city:'Medan',province:'Sumatera Utara'},
+    {code:'BNJ',name:'Binjai',city:'Binjai',province:'Sumatera Utara'},
+    {code:'TBT',name:'Tebing Tinggi',city:'Tebing Tinggi',province:'Sumatera Utara'},
+    {code:'PTS',name:'Pematangsiantar',city:'Pematangsiantar',province:'Sumatera Utara'},
+    {code:'SIR',name:'Siantar',city:'Pematangsiantar',province:'Sumatera Utara'},
+    {code:'RAP',name:'Rantau Prapat',city:'Labuhanbatu',province:'Sumatera Utara'},
+    {code:'KIS',name:'Kisaran',city:'Asahan',province:'Sumatera Utara'},
+    // Sumatera Barat
+    {code:'PD',name:'Padang',city:'Padang',province:'Sumatera Barat'},
+    {code:'BKT',name:'Bukittinggi',city:'Bukittinggi',province:'Sumatera Barat'},
+    {code:'SLK',name:'Solok',city:'Solok',province:'Sumatera Barat'},
+    {code:'PYK',name:'Payakumbuh',city:'Payakumbuh',province:'Sumatera Barat'},
+    // Sumatera Selatan
+    {code:'PLM',name:'Palembang',city:'Palembang',province:'Sumatera Selatan'},
+    {code:'LLG',name:'Lubuklinggau',city:'Lubuklinggau',province:'Sumatera Selatan'},
+    {code:'LHT',name:'Lahat',city:'Lahat',province:'Sumatera Selatan'},
+    {code:'MRE',name:'Muara Enim',city:'Muara Enim',province:'Sumatera Selatan'},
+    {code:'PBM',name:'Prabumulih',city:'Prabumulih',province:'Sumatera Selatan'},
+    // Lampung
+    {code:'TNK',name:'Tanjung Karang',city:'Bandar Lampung',province:'Lampung'},
+    {code:'KBM',name:'Kotabumi',city:'Lampung Utara',province:'Lampung'},
+    {code:'MTO',name:'Metro',city:'Metro',province:'Lampung'},
+    {code:'WKA',name:'Way Kanan',city:'Way Kanan',province:'Lampung'},
+    // Aceh
+    {code:'BAC',name:'Banda Aceh',city:'Banda Aceh',province:'Aceh'},
+    {code:'LSW',name:'Lhokseumawe',city:'Lhokseumawe',province:'Aceh'},
+    {code:'LSA',name:'Langsa',city:'Langsa',province:'Aceh'},
+    // Riau
+    {code:'PKU',name:'Pekanbaru',city:'Pekanbaru',province:'Riau'},
+    {code:'DUM',name:'Dumai',city:'Dumai',province:'Riau'},
+    // Sulawesi Selatan
+    {code:'MKS',name:'Makassar',city:'Makassar',province:'Sulawesi Selatan'},
+    {code:'PRP',name:'Parepare',city:'Parepare',province:'Sulawesi Selatan'},
+    {code:'BRU',name:'Barru',city:'Barru',province:'Sulawesi Selatan'},
+    {code:'PRG',name:'Pinrang',city:'Pinrang',province:'Sulawesi Selatan'},
+    // Sulawesi Utara
+    {code:'MND',name:'Manado',city:'Manado',province:'Sulawesi Utara'},
+    // Kalimantan Selatan
+    {code:'BNJ',name:'Banjarmasin',city:'Banjarmasin',province:'Kalimantan Selatan'},
+];
+
+// Hapus duplikat berdasarkan code
+const uniqueStations = [];
+const seenCodes = new Set();
+stations.forEach(s => {
+    if (!seenCodes.has(s.code)) { seenCodes.add(s.code); uniqueStations.push(s); }
+});
+const stationList = uniqueStations;
+
+// ============================================================
+// DATA KERETA API
+// ============================================================
+const trainData = [
+    // === RUTE JAKARTA - SURABAYA ===
+    {name:'Argo Bromo Anggrek',from:'GMR',to:'SBI',depart:'08:00',arrive:'16:30',classes:['Eksekutif'],price:450000},
+    {name:'Argo Bromo Anggrek',from:'SBI',to:'GMR',depart:'20:00',arrive:'04:30',classes:['Eksekutif'],price:450000},
+    {name:'Bima',from:'GMR',to:'SGU',depart:'16:00',arrive:'05:00',classes:['Eksekutif'],price:420000},
+    {name:'Bima',from:'SGU',to:'GMR',depart:'16:00',arrive:'05:00',classes:['Eksekutif'],price:420000},
+    {name:'Kertajaya',from:'PSE',to:'SBI',depart:'21:00',arrive:'08:00',classes:['Ekonomi'],price:180000},
+    {name:'Kertajaya',from:'SBI',to:'PSE',depart:'16:00',arrive:'03:00',classes:['Ekonomi'],price:180000},
+    {name:'Gaya Baru Malam',from:'JAKK',to:'SGU',depart:'18:00',arrive:'08:00',classes:['Ekonomi'],price:160000},
+    {name:'Gaya Baru Malam',from:'SGU',to:'JAKK',depart:'18:00',arrive:'08:00',classes:['Ekonomi'],price:160000},
+    // === RUTE JAKARTA - YOGYAKARTA ===
+    {name:'Taksaka',from:'GMR',to:'YK',depart:'08:30',arrive:'14:25',classes:['Eksekutif'],price:350000},
+    {name:'Taksaka',from:'YK',to:'GMR',depart:'07:00',arrive:'13:00',classes:['Eksekutif'],price:350000},
+    {name:'Taksaka Pagi',from:'GMR',to:'YK',depart:'06:00',arrive:'12:00',classes:['Eksekutif'],price:350000},
+    {name:'Fajar Utama Yogya',from:'PSE',to:'YK',depart:'06:00',arrive:'13:00',classes:['Eksekutif'],price:310000},
+    {name:'Fajar Utama Yogya',from:'YK',to:'PSE',depart:'06:00',arrive:'13:00',classes:['Eksekutif'],price:310000},
+    {name:'Bogowonto',from:'PSE',to:'YK',depart:'22:00',arrive:'05:00',classes:['Ekonomi'],price:150000},
+    {name:'Bogowonto',from:'YK',to:'PSE',depart:'21:00',arrive:'04:00',classes:['Ekonomi'],price:150000},
+    {name:'Progo',from:'YK',to:'PSE',depart:'06:00',arrive:'13:15',classes:['Ekonomi'],price:130000},
+    {name:'Progo',from:'PSE',to:'YK',depart:'21:00',arrive:'04:00',classes:['Ekonomi'],price:130000},
+    // === RUTE JAKARTA - SEMARANG ===
+    {name:'Tawang Jaya',from:'PSE',to:'SMT',depart:'09:00',arrive:'16:30',classes:['Ekonomi'],price:140000},
+    {name:'Tawang Jaya',from:'SMT',to:'PSE',depart:'21:00',arrive:'04:30',classes:['Ekonomi'],price:140000},
+    {name:'Kaligung',from:'TGL',to:'SMT',depart:'07:00',arrive:'09:30',classes:['Ekonomi'],price:45000},
+    // === RUTE JAKARTA - KUTOARJO ===
+    {name:'Sawunggalih',from:'PSE',to:'KTA',depart:'20:00',arrive:'05:30',classes:['Eksekutif','Ekonomi'],price:280000},
+    {name:'Sawunggalih',from:'KTA',to:'PSE',depart:'20:00',arrive:'05:30',classes:['Eksekutif','Ekonomi'],price:280000},
+    // === RUTE JAKARTA - PURWOKERTO ===
+    {name:'Purwojaya',from:'GMR',to:'PWT',depart:'22:00',arrive:'05:30',classes:['Eksekutif','Bisnis'],price:270000},
+    {name:'Purwojaya',from:'PWT',to:'GMR',depart:'18:00',arrive:'01:30',classes:['Eksekutif','Bisnis'],price:270000},
+    // === RUTE JAKARTA - MALANG ===
+    {name:'Gajayana',from:'GMR',to:'ML',depart:'18:30',arrive:'06:30',classes:['Eksekutif'],price:470000},
+    {name:'Gajayana',from:'ML',to:'GMR',depart:'15:00',arrive:'03:00',classes:['Eksekutif'],price:470000},
+    {name:'Matarmaja',from:'ML',to:'PSE',depart:'15:00',arrive:'04:00',classes:['Ekonomi'],price:200000},
+    {name:'Matarmaja',from:'PSE',to:'ML',depart:'18:00',arrive:'07:00',classes:['Ekonomi'],price:200000},
+    // === RUTE JAKARTA - BLITAR ===
+    {name:'Brantas',from:'PSE',to:'BL',depart:'17:00',arrive:'06:00',classes:['Ekonomi'],price:190000},
+    {name:'Brantas',from:'BL',to:'PSE',depart:'16:00',arrive:'05:00',classes:['Ekonomi'],price:190000},
+    // === RUTE JAKARTA - KEDIRI ===
+    {name:'Senja Kediri',from:'PSE',to:'KD',depart:'19:00',arrive:'04:00',classes:['Ekonomi'],price:165000},
+    {name:'Senja Kediri',from:'KD',to:'PSE',depart:'17:00',arrive:'02:00',classes:['Ekonomi'],price:165000},
+    // === RUTE JAKARTA - SURABAYA (Eksekutif) ===
+    {name:'Singasari',from:'PSE',to:'SGU',depart:'20:00',arrive:'05:00',classes:['Eksekutif'],price:380000},
+    {name:'Singasari',from:'SGU',to:'PSE',depart:'20:00',arrive:'05:00',classes:['Eksekutif'],price:380000},
+    // === RUTE BANDUNG - SOLO ===
+    {name:'Lodaya',from:'BD',to:'SLO',depart:'08:15',arrive:'15:30',classes:['Eksekutif','Bisnis'],price:250000},
+    {name:'Lodaya',from:'SLO',to:'BD',depart:'08:00',arrive:'15:15',classes:['Eksekutif','Bisnis'],price:250000},
+    // === RUTE BANDUNG - SURABAYA ===
+    {name:'Turangga',from:'BD',to:'SGU',depart:'08:00',arrive:'18:00',classes:['Bisnis'],price:320000},
+    {name:'Turangga',from:'SGU',to:'BD',depart:'08:00',arrive:'18:00',classes:['Bisnis'],price:320000},
+    {name:'Argo Wilis',from:'BD',to:'SGU',depart:'08:30',arrive:'19:00',classes:['Eksekutif'],price:400000},
+    {name:'Argo Wilis',from:'SGU',to:'BD',depart:'08:00',arrive:'18:30',classes:['Eksekutif'],price:400000},
+    // === RUTE JAKARTA - BANDUNG ===
+    {name:'Argo Parahyangan',from:'GMR',to:'BD',depart:'06:00',arrive:'08:30',classes:['Eksekutif'],price:120000},
+    {name:'Argo Parahyangan',from:'BD',to:'GMR',depart:'07:00',arrive:'09:30',classes:['Eksekutif'],price:120000},
+    {name:'Argo Parahyangan',from:'GMR',to:'BD',depart:'12:00',arrive:'14:30',classes:['Eksekutif'],price:120000},
+    {name:'Argo Parahyangan',from:'BD',to:'GMR',depart:'16:00',arrive:'18:30',classes:['Eksekutif'],price:120000},
+    // === RUTE SOLO - SURABAYA ===
+    {name:'Surya Kencana',from:'SLO',to:'SGU',depart:'06:00',arrive:'10:30',classes:['Eksekutif'],price:120000},
+    {name:'Surya Kencana',from:'SGU',to:'SLO',depart:'14:00',arrive:'18:30',classes:['Eksekutif'],price:120000},
+    {name:'Joglosemarkerto',from:'SLO',to:'SGU',depart:'08:00',arrive:'13:00',classes:['Ekonomi'],price:70000},
+    // === RUTE YOGYAKARTA - SURABAYA ===
+    {name:'Sri Tanjung',from:'YK',to:'BW',depart:'07:00',arrive:'19:00',classes:['Ekonomi'],price:140000},
+    {name:'Sri Tanjung',from:'BW',to:'YK',depart:'07:00',arrive:'19:00',classes:['Ekonomi'],price:140000},
+    {name:'Logawa',from:'YK',to:'JBR',depart:'08:00',arrive:'16:00',classes:['Ekonomi','Bisnis'],price:120000},
+    // === RUTE JAKARTA - TANJUNG PRIOK ===
+    {name:'Bengawan',from:'SLO',to:'TJPR',depart:'17:00',arrive:'05:00',classes:['Ekonomi'],price:175000},
+    {name:'Bengawan',from:'TJPR',to:'SLO',depart:'19:00',arrive:'07:00',classes:['Ekonomi'],price:175000},
+    // === SUMATERA UTARA ===
+    {name:'Sribilah',from:'MES',to:'RAP',depart:'08:00',arrive:'14:00',classes:['Eksekutif','Bisnis'],price:200000},
+    {name:'Sribilah',from:'RAP',to:'MES',depart:'08:00',arrive:'14:00',classes:['Eksekutif','Bisnis'],price:200000},
+    {name:'Putri Delima',from:'MES',to:'TBT',depart:'07:00',arrive:'09:00',classes:['Ekonomi'],price:60000},
+    {name:'Siantar Ekspres',from:'MES',to:'SIR',depart:'10:00',arrive:'13:00',classes:['Ekonomi'],price:80000},
+    // === LAMPUNG - PALEMBANG ===
+    {name:'Lampung Ekspres',from:'TNK',to:'PLM',depart:'08:00',arrive:'13:00',classes:['Ekonomi'],price:120000},
+    {name:'Lampung Ekspres',from:'PLM',to:'TNK',depart:'08:00',arrive:'13:00',classes:['Ekonomi'],price:120000},
+    {name:'Rajabasa',from:'TNK',to:'PLM',depart:'20:00',arrive:'01:00',classes:['Eksekutif'],price:180000},
+    {name:'Rajabasa',from:'PLM',to:'TNK',depart:'20:00',arrive:'01:00',classes:['Eksekutif'],price:180000},
+    // === SUMATERA BARAT ===
+    {name:'Minangkabau Ekspres',from:'PD',to:'BKT',depart:'07:00',arrive:'10:00',classes:['Ekonomi'],price:50000},
+    {name:'Minangkabau Ekspres',from:'BKT',to:'PD',depart:'14:00',arrive:'17:00',classes:['Ekonomi'],price:50000},
+    // === SULAWESI SELATAN ===
+    {name:'Massaereng',from:'MKS',to:'PRP',depart:'08:00',arrive:'11:00',classes:['Ekonomi'],price:60000},
+    {name:'Massaereng',from:'PRP',to:'MKS',depart:'14:00',arrive:'17:00',classes:['Ekonomi'],price:60000},
+];
+
+// ============================================================
+// KERETA POPULER UNTUK DISPLAY
+// ============================================================
+const popularTrains = [
+    {name:'Argo Bromo Anggrek',route:'Gambir - Surabaya Pasar Turi',icon:'fa-bolt',color:'from-amber-500 to-orange-500'},
+    {name:'Taksaka',route:'Gambir - Yogyakarta',icon:'fa-star',color:'from-kai-500 to-blue-600'},
+    {name:'Lodaya',route:'Bandung - Solo Balapan',icon:'fa-mountain-sun',color:'from-emerald-500 to-teal-600'},
+    {name:'Gajayana',route:'Gambir - Malang',icon:'fa-fire',color:'from-red-500 to-rose-600'},
+    {name:'Bima',route:'Gambir - Surabaya Gubeng',icon:'fa-gem',color:'from-violet-500 to-purple-600'},
+    {name:'Turangga',route:'Bandung - Surabaya Gubeng',icon:'fa-wind',color:'from-cyan-500 to-sky-600'},
+    {name:'Progo',route:'Yogyakarta - Pasar Senen',icon:'fa-leaf',color:'from-lime-500 to-green-600'},
+    {name:'Bengawan',route:'Solo Balapan - Tanjung Priok',icon:'fa-water',color:'from-indigo-500 to-blue-700'},
+    {name:'Argo Parahyangan',route:'Gambir - Bandung',icon:'fa-building',color:'from-pink-500 to-fuchsia-600'},
+    {name:'Argo Wilis',route:'Bandung - Surabaya Gubeng',icon:'fa-sun',color:'from-yellow-500 to-amber-600'},
+    {name:'Sribilah',route:'Medan - Rantau Prapat',icon:'fa-tree',color:'from-teal-500 to-emerald-600'},
+    {name:'Rajabasa',route:'Tanjung Karang - Palembang',icon:'fa-landmark',color:'from-orange-500 to-red-500'},
+];
+
+// ============================================================
+// STATE APLIKASI
+// ============================================================
+const state = {
+    step: 1,
+    departure: null,
+    arrival: null,
+    date: '',
+    passengers: 1,
+    trainClass: '',
+    selectedTrain: null,
+    searchResults: [],
+    openDropdown: null
+};
+
+// Nomor WhatsApp admin - GANTI DENGAN NOMOR ADMIN ANDA
+const ADMIN_WA = '6282261886836';
+
+// ============================================================
+// FUNGSI UTILITAS
+// ============================================================
+function getStation(code) {
+    return stationList.find(s => s.code === code) || {name: code, city: '', province: ''};
+}
+
+function formatPrice(price, cls) {
+    let multiplier = 1;
+    if (cls === 'Bisnis') multiplier = 0.7;
+    else if (cls === 'Ekonomi') multiplier = 0.4;
+    const finalPrice = Math.round(price * multiplier);
+    return 'Rp ' + finalPrice.toLocaleString('id-ID');
+}
+
+function calcPrice(price, cls) {
+    let multiplier = 1;
+    if (cls === 'Bisnis') multiplier = 0.7;
+    else if (cls === 'Ekonomi') multiplier = 0.4;
+    return Math.round(price * multiplier);
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    return days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(message, type = 'error') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + type;
+    const iconMap = { error: 'fa-circle-exclamation', success: 'fa-circle-check', info: 'fa-circle-info' };
+    toast.innerHTML = '<i class="fas ' + (iconMap[type] || iconMap.info) + '"></i><span>' + message + '</span>';
+    container.appendChild(toast);
+    requestAnimationFrame(() => { toast.classList.add('show'); });
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+}
+
+// ============================================================
+// DROPDOWN STASIUN
+// ============================================================
+function renderStationList(type, filter = '') {
+    const list = document.getElementById('dd-' + type + '-list');
+    const f = filter.toLowerCase();
+    const filtered = stationList.filter(s =>
+        s.name.toLowerCase().includes(f) ||
+        s.city.toLowerCase().includes(f) ||
+        s.province.toLowerCase().includes(f) ||
+        s.code.toLowerCase().includes(f)
+    );
+    if (filtered.length === 0) {
+        list.innerHTML = '<div class="dropdown-empty"><i class="fas fa-search-minus mb-2 text-lg text-gray-300"></i><br>Stasiun tidak ditemukan</div>';
+        return;
+    }
+    const selectedCode = state[type === 'departure' ? 'departure' : 'arrival'];
+    list.innerHTML = filtered.map(s => {
+        const sel = selectedCode && selectedCode.code === s.code ? ' selected' : '';
+        return '<div class="dropdown-item' + sel + '" onclick="selectStation(\'' + type + '\',\'' + s.code + '\')">' +
+            '<span class="st-name">' + s.name + '</span>' +
+            '<span class="st-detail"><i class="fas fa-map-marker-alt mr-1 text-[10px]"></i>' + s.city + ', ' + s.province + ' (' + s.code + ')</span>' +
+            '</div>';
+    }).join('');
+}
+
+function toggleDropdown(type) {
+    const menu = document.getElementById('dd-' + type + '-menu');
+    const trigger = menu.previousElementSibling;
+    if (state.openDropdown === type) {
+        closeAllDropdowns();
+        return;
+    }
+    closeAllDropdowns();
+    menu.classList.add('open');
+    trigger.classList.add('active');
+    state.openDropdown = type;
+    const searchInput = menu.querySelector('input');
+    searchInput.value = '';
+    renderStationList(type);
+    setTimeout(() => searchInput.focus(), 50);
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+    document.querySelectorAll('.dropdown-trigger').forEach(t => t.classList.remove('active'));
+    state.openDropdown = null;
+}
+
+function selectStation(type, code) {
+    const station = getStation(code);
+    state[type === 'departure' ? 'departure' : 'arrival'] = station;
+    const textEl = document.getElementById('dd-' + type + '-text');
+    textEl.textContent = station.name + ' (' + station.code + ')';
+    textEl.classList.remove('placeholder');
+    textEl.classList.add('label');
+    closeAllDropdowns();
+    renderStationList(type); // update selected state
+}
+
+function filterStations(type, value) {
+    renderStationList(type, value);
+}
+
+// Tutup dropdown saat klik di luar
+document.addEventListener('click', function(e) {
+    if (state.openDropdown && !e.target.closest('.station-dropdown')) {
+        closeAllDropdowns();
+    }
+});
+
+// ============================================================
+// NAVIGASI STEP
+// ============================================================
+function goToStep(step) {
+    state.step = step;
+    document.getElementById('step1').classList.toggle('hidden', step !== 1);
+    document.getElementById('step2').classList.toggle('hidden', step !== 2);
+    document.getElementById('step3').classList.toggle('hidden', step !== 3);
+    // Scroll ke atas card
+    document.getElementById('pesan').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+// PENCARIAN TIKET
+// ============================================================
+function searchTickets() {
+    // Validasi
+    if (!state.departure) { showToast('Pilih stasiun keberangkatan terlebih dahulu'); return; }
+    if (!state.arrival) { showToast('Pilih stasiun tujuan terlebih dahulu'); return; }
+    if (state.departure.code === state.arrival.code) { showToast('Stasiun keberangkatan dan tujuan tidak boleh sama'); return; }
+    const dateVal = document.getElementById('inputDate').value;
+    if (!dateVal) { showToast('Pilih tanggal keberangkatan'); return; }
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (new Date(dateVal) < today) { showToast('Tanggal tidak boleh di masa lalu'); return; }
+    const classVal = document.getElementById('inputClass').value;
+    if (!classVal) { showToast('Pilih kelas kereta'); return; }
+
+    state.date = dateVal;
+    state.passengers = parseInt(document.getElementById('inputPassengers').value);
+    state.trainClass = classVal;
+
+    // Cari kereta yang cocok
+    let results = trainData.filter(t =>
+        t.from === state.departure.code && t.to === state.arrival.code &&
+        t.classes.includes(classVal)
+    );
+
+    // Fallback: jika tidak ada kereta langsung, buat entry generik
+    if (results.length === 0) {
+        const genericNames = ['Ekspres ' + state.departure.name, 'Kereta ' + state.arrival.name, 'Laksamana ' + state.departure.city];
+        const hours = [5, 7, 9, 12, 14, 16, 18, 20];
+        const durations = [2, 3, 4, 5, 6, 8];
+        const dur = durations[Math.floor(Math.random() * durations.length)];
+        for (let i = 0; i < 3; i++) {
+            const h = hours[i * 2 + Math.floor(Math.random() * 2)];
+            const arrH = (h + dur) % 24;
+            results.push({
+                name: genericNames[i],
+                from: state.departure.code,
+                to: state.arrival.code,
+                depart: String(h).padStart(2, '0') + ':00',
+                arrive: String(arrH).padStart(2, '0') + ':00',
+                classes: [classVal],
+                price: Math.round((100000 + Math.random() * 300000) / 10000) * 10000,
+                isGeneric: true
+            });
+        }
+    }
+
+    state.searchResults = results;
+
+    // Tampilkan ringkasan rute
+    document.getElementById('routeSummary').textContent =
+        state.departure.name + ' → ' + state.arrival.name + ' | ' + formatDate(state.date) + ' | ' + classVal;
+
+    // Render hasil
+    const container = document.getElementById('searchResults');
+    container.innerHTML = results.map((t, i) => {
+        const price = formatPrice(t.price, classVal);
+        const durMinutes = calcDuration(t.depart, t.arrive);
+        const durStr = formatDuration(durMinutes);
+        const classBadge = classVal === 'Eksekutif' ? 'bg-kai-500' : classVal === 'Bisnis' ? 'bg-amber-500' : 'bg-green-600';
+        return '<div class="train-card border-2 border-gray-100 rounded-xl p-4 hover:border-kai-200 cursor-pointer" onclick="selectTrain(' + i + ')">' +
+            '<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">' +
+                '<div class="flex-1">' +
+                    '<div class="flex items-center gap-2 mb-2">' +
+                        '<span class="font-bold text-kai-900">' + t.name + '</span>' +
+                        '<span class="text-[10px] font-bold text-white px-2 py-0.5 rounded-full ' + classBadge + '">' + classVal + '</span>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-3 text-sm">' +
+                        '<div class="text-center">' +
+                            '<div class="font-bold text-kai-900 text-lg">' + t.depart + '</div>' +
+                            '<div class="text-gray-400 text-xs">' + getStation(t.from).name + '</div>' +
+                        '</div>' +
+                        '<div class="flex-1 flex flex-col items-center px-2">' +
+                            '<div class="text-[10px] text-gray-400 mb-1">' + durStr + '</div>' +
+                            '<div class="w-full h-px bg-gray-200 relative"><div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-kai-500"></div><div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-kai-500"></div><i class="fas fa-train absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-kai-300 text-[10px] bg-white px-1"></i></div>' +
+                        '</div>' +
+                        '<div class="text-center">' +
+                            '<div class="font-bold text-kai-900 text-lg">' + t.arrive + '</div>' +
+                            '<div class="text-gray-400 text-xs">' + getStation(t.to).name + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">' +
+                    '<div class="font-black text-kai-600 text-lg">' + price + '</div>' +
+                    '<span class="text-[10px] text-gray-400">/orang</span>' +
+                    '<div class="bg-kai-500 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-kai-600 transition-colors btn-press">Pilih</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+
+    goToStep(2);
+    showToast('Ditemukan ' + results.length + ' kereta tersedia', 'success');
+}
+
+function calcDuration(dep, arr) {
+    const [dh, dm] = dep.split(':').map(Number);
+    const [ah, am] = arr.split(':').map(Number);
+    let diff = (ah * 60 + am) - (dh * 60 + dm);
+    if (diff <= 0) diff += 24 * 60;
+    return diff;
+}
+
+function formatDuration(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? h + 'j ' + m + 'm' : m + 'm';
+}
+
+// ============================================================
+// PILIH KERETA
+// ============================================================
+function selectTrain(index) {
+    state.selectedTrain = state.searchResults[index];
+    const t = state.selectedTrain;
+    const price = calcPrice(t.price, state.trainClass);
+    const totalPrice = price * state.passengers;
+
+    // Render ringkasan
+    document.getElementById('ticketSummary').innerHTML =
+        '<div class="text-gray-600">Kereta</div><div class="font-semibold text-kai-900">' + t.name + '</div>' +
+        '<div class="text-gray-600">Rute</div><div class="font-semibold text-kai-900">' + getStation(t.from).name + ' → ' + getStation(t.to).name + '</div>' +
+        '<div class="text-gray-600">Tanggal</div><div class="font-semibold text-kai-900">' + formatDate(state.date) + '</div>' +
+        '<div class="text-gray-600">Waktu</div><div class="font-semibold text-kai-900">' + t.depart + ' - ' + t.arrive + '</div>' +
+        '<div class="text-gray-600">Kelas</div><div class="font-semibold text-kai-900">' + state.trainClass + '</div>' +
+        '<div class="text-gray-600">Penumpang</div><div class="font-semibold text-kai-900">' + state.passengers + ' orang</div>' +
+        '<div class="text-gray-600">Harga/Tiket</div><div class="font-semibold text-kai-900">' + formatPrice(t.price, state.trainClass) + '</div>' +
+        '<div class="text-gray-600 font-bold text-kai-700">Total</div><div class="font-black text-kai-600 text-base">Rp ' + totalPrice.toLocaleString('id-ID') + '</div>';
+
+    goToStep(3);
+}
+
+// ============================================================
+// SUBMIT BOOKING → WHATSAPP
+// ============================================================
+function submitBooking() {
+    const name = document.getElementById('inputName').value.trim();
+    const wa = document.getElementById('inputWA').value.trim();
+    const email = document.getElementById('inputEmail').value.trim();
+
+    // Validasi
+    if (!name) { showToast('Masukkan nama lengkap Anda'); return; }
+    if (name.length < 3) { showToast('Nama lengkap minimal 3 karakter'); return; }
+    if (!wa) { showToast('Masukkan nomor WhatsApp Anda'); return; }
+    if (!/^(\+62|62|0)8[1-9][0-9]{6,10}$/.test(wa)) { showToast('Nomor WhatsApp tidak valid. Contoh: 082261886836'); return; }
+    if (!email) { showToast('Masukkan alamat email Anda'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Format email tidak valid'); return; }
+
+    const t = state.selectedTrain;
+    const price = calcPrice(t.price, state.trainClass);
+    const totalPrice = price * state.passengers;
+
+    // Tampilkan loading
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+
+    // Format pesan WhatsApp
+    const message = `Halo Admin KAI, saya ingin memesan tiket kereta api:
+
+*Nama Pemesan:* ${name}
+*Nomor WhatsApp:* ${wa}
+*Email:* ${email}
+
+*Detail Pemesanan:*
+━━━━━━━━━━━━━━━
+🚂 Kereta: ${t.name}
+📍 Rute: ${getStation(t.from).name} → ${getStation(t.to).name}
+📅 Tanggal: ${formatDate(state.date)}
+⏰ Waktu: ${t.depart} - ${t.arrive}
+💺 Kelas: ${state.trainClass}
+👥 Jumlah Penumpang: ${state.passengers} orang
+💰 Harga/Tiket: ${formatPrice(t.price, state.trainClass)}
+💵 Total Bayar: Rp ${totalPrice.toLocaleString('id-ID')}
+━━━━━━━━━━━━━━━
+
+Mohon diproses pemesanan saya. Terima kasih!`;
+
+    // Buka WhatsApp setelah loading singkat
+    setTimeout(() => {
+        const encoded = encodeURIComponent(message);
+        window.open('https://wa.me/6282261886836' + ADMIN_WA + '?text=' + encoded, '_blank');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
+        showToast('Pemesanan berhasil dikirim via WhatsApp!', 'success');
+    }, 1800);
+}
+
+// ============================================================
+// NAVBAR & MOBILE MENU
+// ============================================================
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const overlay = document.getElementById('mobileOverlay');
+    const icon = document.getElementById('menuIcon');
+    const isOpen = menu.classList.contains('open');
+    menu.classList.toggle('open');
+    overlay.classList.toggle('open');
+    icon.className = isOpen ? 'fas fa-bars text-lg' : 'fas fa-times text-lg';
+}
+
+function scrollToSection(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        const offset = id === 'beranda' ? 0 : 72;
+        const top = el.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+    }
+    // Update active nav
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.querySelectorAll('.nav-link[href="#' + id + '"]').forEach(l => l.classList.add('active'));
+}
+
+// ============================================================
+// RENDER KERETA POPULER
+// ============================================================
+function renderPopularTrains() {
+    const grid = document.getElementById('popularGrid');
+    grid.innerHTML = popularTrains.map(t => {
+        return '<div class="pop-card bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer fade-up" onclick="quickBook(\'' + t.name.replace(/'/g, "\\'") + '\')">' +
+            '<div class="w-12 h-12 rounded-xl bg-gradient-to-br ' + t.color + ' flex items-center justify-center mb-4 shadow-lg shadow-black/10">' +
+                '<i class="fas ' + t.icon + ' text-white text-lg"></i>' +
+            '</div>' +
+            '<h3 class="font-bold text-kai-900 text-sm mb-1">' + t.name + '</h3>' +
+            '<p class="text-gray-400 text-xs flex items-center gap-1"><i class="fas fa-route text-[10px]"></i>' + t.route + '</p>' +
+            '<div class="mt-3 text-kai-500 text-xs font-semibold flex items-center gap-1">Pesan Sekarang <i class="fas fa-arrow-right text-[10px]"></i></div>' +
+        '</div>';
+    }).join('');
+}
+
+function quickBook(trainName) {
+    const train = trainData.find(t => t.name === trainName);
+    if (train) {
+        selectStation('departure', train.from);
+        selectStation('arrival', train.to);
+        if (!document.getElementById('inputDate').value) {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('inputDate').value = tomorrow.toISOString().split('T')[0];
+        }
+        scrollToSection('pesan');
+        showToast('Rute ' + trainName + ' telah dipilih. Lengkapi data dan cari tiket.', 'info');
+    }
+}
+
+// ============================================================
+// RENDER JADWAL
+// ============================================================
+function renderSchedule() {
+    const body = document.getElementById('scheduleBody');
+    // Ambil jadwal unik (hindari duplikat nama+route)
+    const seen = new Set();
+    const uniqueSchedules = [];
+    trainData.forEach(t => {
+        const key = t.name + t.from + t.to;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueSchedules.push(t);
+        }
+    });
+    // Tampilkan 30 jadwal pertama
+    const display = uniqueSchedules.slice(0, 30);
+    body.innerHTML = display.map((t, i) => {
+        const classStr = t.classes.join(', ');
+        const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50';
+        return '<tr class="' + rowBg + '">' +
+            '<td class="font-semibold text-gray-400 text-center">' + (i + 1) + '</td>' +
+            '<td class="font-bold text-kai-900">' + t.name + '</td>' +
+            '<td>' + getStation(t.from).name + ' <i class="fas fa-arrow-right text-[10px] text-gray-300 mx-1"></i> ' + getStation(t.to).name + '</td>' +
+            '<td class="font-semibold">' + t.depart + '</td>' +
+            '<td class="font-semibold">' + t.arrive + '</td>' +
+            '<td><span class="text-xs font-semibold px-2 py-1 rounded-full ' +
+                (t.classes.includes('Eksekutif') ? 'bg-kai-50 text-kai-600' : t.classes.includes('Bisnis') ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600') +
+                '">' + classStr + '</span></td>' +
+        '</tr>';
+    }).join('');
+}
+
+// ============================================================
+// SCROLL ANIMATIONS (IntersectionObserver)
+// ============================================================
+function initScrollAnimations() {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+}
+
+// ============================================================
+// ACTIVE NAV ON SCROLL
+// ============================================================
+function initScrollSpy() {
+    const sections = ['beranda', 'populer', 'jadwal', 'kontak'];
+    const sectionMap = { beranda: 'beranda', pesan: 'beranda', populer: 'populer', jadwal: 'jadwal', kontak: 'kontak' };
+
+    window.addEventListener('scroll', () => {
+        let current = 'beranda';
+        sections.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.getBoundingClientRect().top <= 120) current = id;
+        });
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        const activeId = sectionMap[current] || current;
+        document.querySelectorAll('.nav-link[href="#' + activeId + '"]').forEach(l => l.classList.add('active'));
+    });
+}
+
+// ============================================================
+// INISIALISASI
+// ============================================================
+function init() {
+    // Set min date ke hari ini
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('inputDate').setAttribute('min', today);
+    // Default date besok
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('inputDate').value = tomorrow.toISOString().split('T')[0];
+
+    // Render dropdown stasiun
+    renderStationList('departure');
+    renderStationList('arrival');
+
+    // Render kereta populer
+    renderPopularTrains();
+
+    // Render jadwal
+    renderSchedule();
+
+    // Init animations
+    setTimeout(initScrollAnimations, 100);
+
+    // Init scroll spy
+    initScrollSpy();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
